@@ -1,0 +1,89 @@
+{
+  "name": "claudemux",
+  "version": "0.1.0",
+  "description": "tmux for Claude Code sessions — a desktop command center for managing, resuming, and monitoring every Claude Code conversation in one place.",
+  "main": "main.js",
+  "author": "Nimish Sikri",
+  "license": "MIT",
+  "homepage": "https://github.com/nimish-sikri/Claudemux",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nimish-sikri/Claudemux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nimish-sikri/Claudemux/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "ai",
+    "llm",
+    "electron",
+    "session-manager",
+    "terminal",
+    "tmux",
+    "developer-tools"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "node scripts/postinstall.js",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:icon": "node scripts/make-icon.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron": "^35.7.5",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.claudemux.app",
+    "productName": "Claudemux",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "db.js",
+      "public/**/*",
+      "scripts/**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/*.d.ts",
+      "!**/.bin",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "artifactName": "Claudemux-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Claudemux"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    },
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "asarUnpack": [
+      "node_modules/node-pty/**/*",
+      "node_modules/better-sqlite3/**/*"
+    ]
+  }
+}

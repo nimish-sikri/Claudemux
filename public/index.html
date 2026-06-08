@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'">
+<title>Claudemux</title>
+<link rel="stylesheet" href="vendor/xterm.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Frameless window title bar. The whole bar drags the window;
+     min/max/close are drawn by the OS via titleBarOverlay. -->
+<div class="window-drag" id="window-drag">
+  <span class="window-title-logo">cm</span>
+  <span class="window-title-text">Claudemux</span>
+</div>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+
+  <!-- Tab strip at the very top of the sidebar -->
+  <div class="sidebar-tabs">
+    <button class="tab active" data-tab="sessions">Sessions</button>
+    <button class="tab" data-tab="plans">Plans</button>
+    <button class="tab" data-tab="stats">Stats</button>
+    <button class="tab" data-tab="memory">Memory</button>
+  </div>
+
+  <!-- Sessions sidebar panel -->
+  <div class="sidebar-panel" id="sidebar-sessions">
+    <div class="sidebar-toolbar">
+      <button class="icon-btn" id="btn-grid-toggle" title="Grid overview">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><rect x="2" y="2" width="5" height="5"/><rect x="9" y="2" width="5" height="5"/><rect x="2" y="9" width="5" height="5"/><rect x="9" y="9" width="5" height="5"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-pinned-toggle" title="Show pinned only">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M9 1l1 4 3 1-3 2 1 4-3-2-3 2 1-4-3-2 3-1z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-new-session" title="New session">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h10M3 8h6M3 11h6"/><path d="M12 10v4M10 12h4"/></svg>
+      </button>
+      <button class="icon-btn ml-auto" id="btn-settings" title="Settings / toggle theme">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M14.5 8h-2M3.5 8h-2M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4M12.6 12.6l-1.4-1.4M4.8 4.8L3.4 3.4"/></svg>
+      </button>
+    </div>
+    <div class="search-wrap">
+      <input class="search" type="text" id="search" placeholder="Search by name or ID…" spellcheck="false">
+    </div>
+    <div class="session-list" id="session-list">
+      <div class="loading">Loading sessions…</div>
+    </div>
+  </div>
+
+  <!-- Plans sidebar panel -->
+  <div class="sidebar-panel hidden" id="sidebar-plans">
+    <div class="sidebar-toolbar">
+      <button class="icon-btn" title="New plan" id="btn-new-plan">+</button>
+      <button class="icon-btn" title="Refresh" id="btn-refresh-plans">↻</button>
+    </div>
+    <div class="search-wrap">
+      <input class="search" type="text" id="search-plans" placeholder="Search plans…" spellcheck="false">
+    </div>
+    <div class="plan-list" id="plan-list"><div class="loading">Loading plans…</div></div>
+  </div>
+
+  <!-- Memory sidebar panel -->
+  <div class="sidebar-panel hidden" id="sidebar-memory">
+    <div class="sidebar-toolbar">
+      <button class="icon-btn" title="Refresh" id="btn-refresh-memory">↻</button>
+    </div>
+    <div class="memory-list" id="memory-list"><div class="loading">Loading memory…</div></div>
+  </div>
+
+  <!-- Stats sidebar panel -->
+  <div class="sidebar-panel hidden" id="sidebar-stats">
+    <div class="stats-side" id="stats-side"><div class="loading">Loading stats…</div></div>
+  </div>
+
+  <!-- Sidebar bottom status bar -->
+  <div class="sidebar-footer" id="sidebar-footer">
+    <span id="sf-running">0 running</span>
+    <span class="sf-sep">·</span>
+    <span id="sf-sessions">0 sessions</span>
+    <span class="sf-sep">·</span>
+    <span id="sf-projects">0 projects</span>
+  </div>
+</aside>
+
+<!-- Sidebar resize handle -->
+<div class="sidebar-resize" id="sidebar-resize"></div>
+
+<!-- Hidden refresh-shortcut used by app.js, but no longer in toolbar -->
+<button id="btn-refresh" class="hidden"></button>
+<!-- Hidden collapse-all shortcut (still wired but UI-hidden) -->
+<button id="btn-collapse-all" class="hidden"></button>
+
+<!-- ── Main Area ──────────────────────────────────────────────────────────── -->
+<div class="main-area">
+
+  <!-- Sessions view -->
+  <div class="main-view" id="view-sessions">
+    <div class="topbar" id="topbar">
+      <div class="topbar-session-info">
+        <span class="status-dot idle" id="top-status-dot"></span>
+        <span class="topbar-title" id="topbar-title">Claudemux</span>
+        <span class="topbar-subtitle" id="topbar-subtitle">Claude Code · select a session to start</span>
+      </div>
+      <div class="topbar-actions">
+        <span class="top-stat" id="top-stat"></span>
+        <button class="action-btn green"  id="btn-run"     disabled>▶ Run</button>
+        <button class="action-btn"        id="btn-stop"    disabled>■ Stop</button>
+        <button class="action-btn"        id="btn-restart" disabled>↺ Restart</button>
+      </div>
+    </div>
+
+    <div class="content-split" id="content-split">
+      <div class="terminal-panel" id="terminal-panel">
+        <div class="terminal-placeholder" id="terminal-placeholder">
+          <div class="placeholder-inner">
+            <div class="placeholder-logo">cm</div>
+            <h2>Claudemux</h2>
+            <p>Select a session from the sidebar to open it,<br>or press <kbd>+</kbd> to start a new one.</p>
+          </div>
+        </div>
+        <div id="terminal-host"></div>
+        <!-- Find-in-terminal bar -->
+        <div class="find-bar hidden" id="find-bar">
+          <input type="text" id="find-input" placeholder="Find in terminal…" spellcheck="false">
+          <button class="icon-btn small" id="find-prev" title="Previous (Shift+Enter)">↑</button>
+          <button class="icon-btn small" id="find-next" title="Next (Enter)">↓</button>
+          <button class="icon-btn small" id="find-close" title="Close (Esc)">×</button>
+        </div>
+      </div>
+
+      <div class="resize-handle" id="resize-handle"></div>
+
+      <div class="file-panel hidden" id="file-panel">
+        <div class="file-panel-header">
+          <span class="file-tab" id="file-tab-name">No file open</span>
+          <div class="file-view-modes">
+            <button class="mode-btn active" id="mode-source" data-mode="source">Source</button>
+            <button class="mode-btn"        id="mode-diff-inline" data-mode="diff-inline">Inline</button>
+            <button class="mode-btn"        id="mode-diff-side"   data-mode="diff-side">Side-by-side</button>
+          </div>
+          <button class="icon-btn small" id="btn-close-file">×</button>
+        </div>
+        <div class="file-content-wrap">
+          <pre class="file-content" id="file-content"></pre>
+          <div class="diff-side-wrap hidden" id="diff-side-wrap">
+            <pre class="file-content" id="diff-left"></pre>
+            <pre class="file-content" id="diff-right"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span id="sb-session-id"></span>
+      <span id="sb-cwd"></span>
+      <span class="ml-auto" id="sb-msgs"></span>
+    </div>
+  </div>
+
+  <!-- Grid overview -->
+  <div class="main-view hidden" id="view-grid">
+    <div class="topbar">
+      <span class="topbar-title">Grid Overview</span>
+      <span class="topbar-subtitle" id="grid-subtitle">All sessions</span>
+      <div class="topbar-actions">
+        <button class="action-btn" id="btn-grid-back">← Back to session</button>
+      </div>
+    </div>
+    <div class="grid-wrap" id="grid-wrap"><div class="loading">Loading…</div></div>
+  </div>
+
+  <!-- Plans view -->
+  <div class="main-view hidden" id="view-plans">
+    <div class="topbar">
+      <span class="topbar-title" id="plan-title">Plans</span>
+      <span class="topbar-subtitle" id="plan-subtitle">Select a plan to edit</span>
+      <div class="topbar-actions">
+        <button class="action-btn"        id="btn-plan-save"   disabled>💾 Save</button>
+        <button class="action-btn red"    id="btn-plan-delete" disabled>🗑 Delete</button>
+      </div>
+    </div>
+    <div class="editor-wrap">
+      <textarea class="editor" id="plan-editor" spellcheck="false" placeholder="Select a plan from the sidebar…" disabled></textarea>
+    </div>
+  </div>
+
+  <!-- Memory view -->
+  <div class="main-view hidden" id="view-memory">
+    <div class="topbar">
+      <span class="topbar-title" id="memory-title">Memory</span>
+      <span class="topbar-subtitle" id="memory-subtitle">CLAUDE.md files</span>
+      <div class="topbar-actions">
+        <button class="action-btn" id="btn-memory-save" disabled>💾 Save</button>
+      </div>
+    </div>
+    <div class="editor-wrap">
+      <textarea class="editor" id="memory-editor" spellcheck="false" placeholder="Select a CLAUDE.md from the sidebar…" disabled></textarea>
+    </div>
+  </div>
+
+  <!-- Stats view -->
+  <div class="main-view hidden" id="view-stats">
+    <div class="topbar">
+      <span class="topbar-title">Stats</span>
+      <span class="topbar-subtitle" id="stats-subtitle">Activity across all projects</span>
+    </div>
+    <div class="stats-main" id="stats-main"><div class="loading">Loading…</div></div>
+  </div>
+
+  <!-- JSONL message viewer (shown when "View messages" is invoked) -->
+  <div class="main-view hidden" id="view-jsonl">
+    <div class="topbar">
+      <span class="topbar-title" id="jsonl-title">Messages</span>
+      <span class="topbar-subtitle" id="jsonl-subtitle"></span>
+      <div class="topbar-actions">
+        <button class="action-btn" id="btn-jsonl-back">← Back</button>
+      </div>
+    </div>
+    <div class="jsonl-wrap" id="jsonl-wrap"><div class="loading">Loading messages…</div></div>
+  </div>
+</div>
+
+<!-- New session modal -->
+<div class="modal-backdrop hidden" id="new-session-modal">
+  <div class="modal">
+    <h3>New Session</h3>
+    <label>Working directory</label>
+    <input type="text" id="new-cwd" placeholder="C:\Users\you\myproject" spellcheck="false">
+    <div class="modal-actions">
+      <button class="action-btn" id="btn-cancel-new">Cancel</button>
+      <button class="action-btn green" id="btn-confirm-new">Launch</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop hidden" id="settings-modal">
+  <div class="modal modal-wide">
+    <h3>Settings</h3>
+    <div class="settings-grid">
+      <label>Theme</label>
+      <div class="settings-row">
+        <button class="action-btn" id="settings-theme-dark">Dark</button>
+        <button class="action-btn" id="settings-theme-light">Light</button>
+      </div>
+
+      <label>Claude binary</label>
+      <input type="text" id="settings-claude-bin" placeholder="path/to/claude.exe" spellcheck="false">
+
+      <label>Sessions per project</label>
+      <input type="number" id="settings-sessions-visible" min="1" max="50" value="5">
+
+      <label>Terminal font size</label>
+      <input type="number" id="settings-term-font" min="8" max="24" value="13">
+
+      <label>Auto-refresh (running)</label>
+      <input type="number" id="settings-refresh-ms" min="1000" max="60000" step="1000" value="5000">
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn" id="btn-settings-cancel">Close</button>
+      <button class="action-btn green" id="btn-settings-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div class="context-menu hidden" id="context-menu" role="menu"></div>
+
+<!-- Toast stack -->
+<div class="toast-stack" id="toast-stack"></div>
+
+<script src="vendor/xterm.js"></script>
+<script src="vendor/addon-fit.js"></script>
+<script src="vendor/addon-web-links.js"></script>
+<script src="vendor/addon-search.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
