@@ -42,6 +42,10 @@ macOS and Linux builds are not yet packaged. You can still run from source — s
 
 ## Screenshots
 
+**Grid overview** — every active session shown as a live card with the last few lines of terminal output. Refreshes every second; click any card to focus that session.
+
+![Grid overview of running sessions](docs/screenshots/grid.png)
+
 **Live terminal with tool-call rendering** — claude's `Write`, `PowerShell`, `Edit`, and subagent calls render as labelled, collapsible cards so you can scan a long conversation quickly.
 
 ![Tool calls inline](docs/screenshots/tool-calls.png)
