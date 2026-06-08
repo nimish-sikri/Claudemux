@@ -2,6 +2,8 @@
 
 > tmux for Claude Code sessions — a desktop command center for managing, resuming, and monitoring every Claude Code conversation in one place.
 
+![Claudemux session view](docs/screenshots/sessions.png)
+
 Claudemux scans `~/.claude/projects/` for every session you have ever started with Claude Code, surfaces them grouped by project, and lets you resume, monitor, fork, rename, and tear down sessions from a single window. No more `cd`-ing into a project, copying a UUID out of a folder name, and pasting `claude --resume <uuid>` into a terminal.
 
 ---
@@ -33,6 +35,20 @@ macOS and Linux builds are not yet packaged. You can still run from source — s
 - **Right-click context menu** — Open, Rename, Pin/Unpin, View messages, Reveal in Explorer, Stop, Delete.
 - **Light + dark theme** — switch from the toolbar; terminal stays dark in both (claude's ANSI output expects a dark palette).
 - **Sleek scrollbars, sidebar resize, persistent layout** — all the small things you would expect from a serious desktop tool.
+
+---
+
+---
+
+## Screenshots
+
+**Live terminal with tool-call rendering** — claude's `Write`, `PowerShell`, `Edit`, and subagent calls render as labelled, collapsible cards so you can scan a long conversation quickly.
+
+![Tool calls inline](docs/screenshots/tool-calls.png)
+
+**Plans editor** — every `.claude/plans/*.md` file across your projects, edited inline in the same window.
+
+![Plans editor](docs/screenshots/plans.png)
 
 ---
 
