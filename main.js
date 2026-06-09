@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeTheme, clipboard } = require('electron');
 const path  = require('path');
 const fs    = require('fs');
 const os    = require('os');
@@ -315,6 +315,11 @@ ipcMain.handle('read-file', (_, { filePath }) => {
 });
 
 ipcMain.handle('open-external', (_, { url }) => shell.openExternal(url));
+
+// Electron's clipboard module never fails on CSP / focus / user-gesture rules
+// like navigator.clipboard does, so we route copy/paste through main.
+ipcMain.handle('clipboard-read',  ()         => clipboard.readText());
+ipcMain.handle('clipboard-write', (_, text)  => { clipboard.writeText(String(text || '')); return true; });
 
 ipcMain.handle('reveal-in-explorer', (_, { path: p }) => {
   try { shell.openPath(p); return true; } catch { return false; }

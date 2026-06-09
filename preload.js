@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('api', {
   killSession:    (opts)   => ipcRenderer.invoke('kill-session', opts),
   readFile:       (opts)   => ipcRenderer.invoke('read-file', opts),
   openExternal:   (opts)   => ipcRenderer.invoke('open-external', opts),
+  clipboardRead:  ()       => ipcRenderer.invoke('clipboard-read'),
+  clipboardWrite: (text)   => ipcRenderer.invoke('clipboard-write', text),
   revealInExplorer: (opts) => ipcRenderer.invoke('reveal-in-explorer', opts),
   deleteSession:    (opts) => ipcRenderer.invoke('delete-session', opts),
   readJsonl:        (opts) => ipcRenderer.invoke('read-jsonl', opts),

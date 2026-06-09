@@ -585,11 +585,25 @@ function mountTerminal(sessionId, opts = {}) {
   });
 
   // Clipboard shortcuts — intercept BEFORE xterm consumes the key.
-  //   Ctrl+Shift+C   → copy selection (or Cmd+C on Mac when text is selected)
+  //   Ctrl+Shift+C   → copy selection (or Cmd+C / Cmd+Shift+C on Mac)
   //   Ctrl+Shift+V   → paste from clipboard (or Cmd+V on Mac)
   //   Ctrl+Insert    → copy (legacy Windows convention)
   //   Shift+Insert   → paste (legacy Windows convention)
-  // Returning `false` tells xterm to swallow the event.
+  // Returning `false` tells xterm to swallow the event; we also preventDefault
+  // so the browser layer doesn't pick it up either.
+  const doCopy = () => {
+    const sel = term.getSelection();
+    if (sel) window.api.clipboardWrite(sel);
+  };
+  const doPaste = async () => {
+    try {
+      const text = await window.api.clipboardRead();
+      if (text && runningSet.has(sessionId)) {
+        window.api.sendInput({ sessionId, data: text });
+      }
+    } catch {}
+  };
+
   term.attachCustomKeyEventHandler(e => {
     if (e.type !== 'keydown') return true;
     const mod = e.ctrlKey || e.metaKey;
@@ -597,48 +611,35 @@ function mountTerminal(sessionId, opts = {}) {
 
     // Copy
     if ((mod && e.shiftKey && key === 'c') ||
+        (mod && key === 'c' && term.hasSelection?.()) ||
         (e.ctrlKey && e.key === 'Insert')) {
-      const sel = term.getSelection();
-      if (sel) navigator.clipboard.writeText(sel).catch(() => {});
+      doCopy();
+      e.preventDefault();
       return false;
     }
     // Paste
     if ((mod && e.shiftKey && key === 'v') ||
+        (e.metaKey && key === 'v') ||
         (e.shiftKey && e.key === 'Insert')) {
-      navigator.clipboard.readText().then(text => {
-        if (text && runningSet.has(sessionId)) {
-          window.api.sendInput({ sessionId, data: text });
-        }
-      }).catch(() => {});
-      return false;
-    }
-    // Mac convention: ⌘C / ⌘V (when a selection exists for copy)
-    if (e.metaKey && key === 'c' && term.getSelection()) {
-      navigator.clipboard.writeText(term.getSelection()).catch(() => {});
-      return false;
-    }
-    if (e.metaKey && key === 'v') {
-      navigator.clipboard.readText().then(text => {
-        if (text && runningSet.has(sessionId)) window.api.sendInput({ sessionId, data: text });
-      }).catch(() => {});
+      doPaste();
+      e.preventDefault();
       return false;
     }
     return true;
   });
 
-  // Right-click in the terminal: paste from clipboard
-  container.addEventListener('contextmenu', e => {
+  // Right-click in the terminal:
+  //   - text selected → copy it
+  //   - no selection  → paste from clipboard
+  container.addEventListener('contextmenu', async e => {
     e.preventDefault();
-    if (!runningSet.has(sessionId)) return;
-    // If text is selected, copy it. Otherwise, paste.
     const sel = term.getSelection();
     if (sel) {
-      navigator.clipboard.writeText(sel).catch(() => {});
+      window.api.clipboardWrite(sel);
       term.clearSelection();
-    } else {
-      navigator.clipboard.readText().then(text => {
-        if (text) window.api.sendInput({ sessionId, data: text });
-      }).catch(() => {});
+    } else if (runningSet.has(sessionId)) {
+      const text = await window.api.clipboardRead();
+      if (text) window.api.sendInput({ sessionId, data: text });
     }
   });
 }
