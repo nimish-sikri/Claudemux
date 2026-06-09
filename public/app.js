@@ -583,6 +583,64 @@ function mountTerminal(sessionId, opts = {}) {
       window.api.sendInput({ sessionId, data });
     }
   });
+
+  // Clipboard shortcuts — intercept BEFORE xterm consumes the key.
+  //   Ctrl+Shift+C   → copy selection (or Cmd+C on Mac when text is selected)
+  //   Ctrl+Shift+V   → paste from clipboard (or Cmd+V on Mac)
+  //   Ctrl+Insert    → copy (legacy Windows convention)
+  //   Shift+Insert   → paste (legacy Windows convention)
+  // Returning `false` tells xterm to swallow the event.
+  term.attachCustomKeyEventHandler(e => {
+    if (e.type !== 'keydown') return true;
+    const mod = e.ctrlKey || e.metaKey;
+    const key = e.key.toLowerCase();
+
+    // Copy
+    if ((mod && e.shiftKey && key === 'c') ||
+        (e.ctrlKey && e.key === 'Insert')) {
+      const sel = term.getSelection();
+      if (sel) navigator.clipboard.writeText(sel).catch(() => {});
+      return false;
+    }
+    // Paste
+    if ((mod && e.shiftKey && key === 'v') ||
+        (e.shiftKey && e.key === 'Insert')) {
+      navigator.clipboard.readText().then(text => {
+        if (text && runningSet.has(sessionId)) {
+          window.api.sendInput({ sessionId, data: text });
+        }
+      }).catch(() => {});
+      return false;
+    }
+    // Mac convention: ⌘C / ⌘V (when a selection exists for copy)
+    if (e.metaKey && key === 'c' && term.getSelection()) {
+      navigator.clipboard.writeText(term.getSelection()).catch(() => {});
+      return false;
+    }
+    if (e.metaKey && key === 'v') {
+      navigator.clipboard.readText().then(text => {
+        if (text && runningSet.has(sessionId)) window.api.sendInput({ sessionId, data: text });
+      }).catch(() => {});
+      return false;
+    }
+    return true;
+  });
+
+  // Right-click in the terminal: paste from clipboard
+  container.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (!runningSet.has(sessionId)) return;
+    // If text is selected, copy it. Otherwise, paste.
+    const sel = term.getSelection();
+    if (sel) {
+      navigator.clipboard.writeText(sel).catch(() => {});
+      term.clearSelection();
+    } else {
+      navigator.clipboard.readText().then(text => {
+        if (text) window.api.sendInput({ sessionId, data: text });
+      }).catch(() => {});
+    }
+  });
 }
 
 // ── PTY data / events ─────────────────────────────────────────────────────────
